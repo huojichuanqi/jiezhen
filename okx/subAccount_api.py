@@ -1,0 +1,63 @@
+from .client import Client
+from .consts import *
+
+
+class SubAccountAPI(Client):
+    def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, flag='1'):
+        Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, flag)
+
+    def balances(self, subAcct):
+        params = {"subAcct": subAcct}
+        return self._request_with_params(GET, BALANCE, params)
+
+    def bills(self, ccy='', type='', subAcct='', after='', before='', limit=''):
+        params = {"ccy": ccy, 'type': type, 'subAcct': subAcct, 'after': after, 'before': before, 'limit': limit}
+        return self._request_with_params(GET, BILLs, params)
+    # 移除此接口
+    def delete(self, pwd, subAcct, apiKey):
+        params = {'pwd': pwd, 'subAcct': subAcct, 'apiKey': apiKey}
+        return self._request_with_params(POST, DELETE, params)
+    # 移除此接口
+    def reset(self, pwd, subAcct, label, apiKey, perm, ip=''):
+        params = {'pwd': pwd, 'subAcct': subAcct, 'label': label, 'apiKey': apiKey, 'perm': perm, 'ip': ip}
+        return self._request_with_params(POST, RESET, params)
+    # 移除此接口
+    def create(self, pwd, subAcct, label, Passphrase, perm='', ip=''):
+        params = {'pwd': pwd, 'subAcct': subAcct, 'label': label, 'Passphrase': Passphrase, 'perm': perm, 'ip': ip}
+        return self._request_with_params(POST, CREATE, params)
+    # 移除此接口
+    def watch(self, subAcct,apiKey=''):
+        params = {'subAcct': subAcct,'apiKey':apiKey}
+        return self._request_with_params(GET, WATCH, params)
+
+    def view_list(self, enable='', subAcct='', after='', before='', limit='',uid=''):
+        params = {'enable': enable, 'subAcct': subAcct, 'after': after,
+                  'before': before, 'limit': limit,'uid':uid}
+        return self._request_with_params(GET, VIEW_LIST, params)
+
+    def subAccount_transfer(self, ccy, amt, froms, to, fromSubAccount,toSubAccount,loanTrans='',omitPosRisk=''):
+        params = {'ccy': ccy, 'amt': amt, 'from': froms, 'to': to, 'fromSubAccount': fromSubAccount, 'toSubAccount': toSubAccount,'loanTrans':loanTrans,'omitPosRisk':omitPosRisk}
+        return self._request_with_params(POST, SUBACCOUNT_TRANSFER, params)
+
+    def entrust_subaccount_list(self, subAcct):
+        params = {'subAcct': subAcct}
+        return self._request_with_params(GET, ENTRUST_SUBACCOUNT_LIST, params)
+
+    def modify_apikey(self, subAcct, apiKey, label, perm, ip):
+        params = {'subAcct': subAcct, 'apiKey': apiKey, 'label': label, 'perm': perm, 'ip': ip}
+        return self._request_with_params(POST, MODIFY_APIKEY, params)
+
+    def partner_if_rebate(self, apiKey = ''):
+        params = {'apiKey': apiKey}
+        return self._request_with_params(GET, PARTNER_IF_REBATE, params)
+
+    # 获取子账户最大可转余额 max-withdrawal
+    def max_withdrawal(self, subAcct, ccy = ''):
+        params = {'subAcct': subAcct,'ccy': ccy,}
+        return self._request_with_params(GET, MAX_WITHDRAW, params)
+
+    # 查询托管子账户转账记录 managed-subaccount-bills
+    def managed_subaccount_bills(self,ccy='',type='',subAcct='',subUid='',after='',before='',limit=''):
+        params = {'ccy': ccy,'type': type,'subAcct': subAcct,'subUid': subUid,'after': after,'before': before,
+                  'limit': limit,}
+        return self._request_with_params(GET,SUB_BILLS,params)
