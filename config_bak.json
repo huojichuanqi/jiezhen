@@ -1,0 +1,28 @@
+{
+    "binance": {
+    },
+    "okx": {
+        "apiKey": "",
+        "secret": "",
+        "password": "",
+        "leverage": 1.0
+    },
+    "bitget": {
+    },
+    "feishu_webhook": "",
+    "monitor_interval": 60,
+    "tradingPairs": {
+        "CTC-USDT-SWAP": {
+            "price_factor": 0.99,
+            "amount_usdt": 20
+        },
+        "SWEAT-USDT-SWAP": {
+            "price_factor": 0.99,
+            "amount_usdt": 25
+        },
+        "PNUT-USDT-SWAP": {
+            "price_factor": 0.99,
+            "amount_usdt": 30
+        }
+    }
+}
