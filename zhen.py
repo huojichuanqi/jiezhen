@@ -1,11 +1,13 @@
 import time
-import okx.Trade_api as TradeAPI
-import okx.Public_api as PublicAPI
-import okx.Market_api as MarketAPI
 import json
 import logging
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import TimedRotatingFileHandler
+import okx.Trade_api as TradeAPI
+import okx.Public_api as PublicAPI
+import okx.Market_api as MarketAPI
+import okx.Account_api as AccountAPI
 
 # 读取配置文件
 with open('config.json', 'r') as f:
@@ -20,6 +22,7 @@ feishu_webhook = config.get('feishu_webhook', '')
 trade_api = TradeAPI.TradeAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
 market_api = MarketAPI.MarketAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
 public_api = PublicAPI.PublicAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
+account_api = AccountAPI.AccountAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
 
 log_file = "log/okx.log"
 logger = logging.getLogger(__name__)
@@ -35,6 +38,23 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+instrument_info_dict = {}
+
+def fetch_and_store_all_instruments(instType='SWAP'):
+    try:
+        logger.info(f"Fetching all instruments for type: {instType}")
+        response = public_api.get_instruments(instType=instType)
+        if 'data' in response and len(response['data']) > 0:
+            instrument_info_dict.clear()
+            for instrument in response['data']:
+                instId = instrument['instId']
+                instrument_info_dict[instId] = instrument
+                logger.info(f"Stored instrument: {instId}")
+        else:
+            raise ValueError("Unexpected response structure or no instrument data available")
+    except Exception as e:
+        logger.error(f"Error fetching instruments: {e}")
+        raise
 
 def send_feishu_notification(message):
     if feishu_webhook:
@@ -42,12 +62,9 @@ def send_feishu_notification(message):
         data = {"msg_type": "text", "content": {"text": message}}
         response = requests.post(feishu_webhook, headers=headers, json=data)
         if response.status_code == 200:
-            print("飞书通知发送成功")
+            logger.info("飞书通知发送成功")
         else:
-            print(f"飞书通知发送失败: {response.text}")
-    else:
-        print("飞书Webhook URL未配置")
-
+            logger.error(f"飞书通知发送失败: {response.text}")
 
 def get_mark_price(instId):
     response = market_api.get_ticker(instId)
@@ -57,17 +74,17 @@ def get_mark_price(instId):
     else:
         raise ValueError("Unexpected response structure or missing 'last' key")
 
+def round_price_to_tick(price, tick_size):
+    return round(price / tick_size) * tick_size
 
-def get_historical_klines(instId, bar='1m', limit=30):
+def get_historical_klines(instId, bar='1m', limit=100):
     response = market_api.get_candlesticks(instId, bar=bar, limit=limit)
     if 'data' in response and len(response['data']) > 0:
-        # Return the Kline data which includes [timestamp, open, high, low, close, volume]
         return response['data']
     else:
         raise ValueError("Unexpected response structure or missing candlestick data")
 
-
-def calculate_atr(klines, period=14):
+def calculate_atr(klines, period=60):
     trs = []
     for i in range(1, len(klines)):
         high = float(klines[i][2])
@@ -78,19 +95,16 @@ def calculate_atr(klines, period=14):
     atr = sum(trs[-period:]) / period
     return atr
 
-
-def calculate_average_amplitude(klines, period=14):
+def calculate_average_amplitude(klines, period=60):
     amplitudes = []
     for i in range(len(klines) - period, len(klines)):
         high = float(klines[i][2])
         low = float(klines[i][3])
-        close = float(klines[i][4])  # 使用收盘价作为基准
-        amplitude = ((high - low) / close) * 100  # 计算高低价差的百分比
+        close = float(klines[i][4])
+        amplitude = ((high - low) / close) * 100
         amplitudes.append(amplitude)
     average_amplitude = sum(amplitudes) / len(amplitudes)
     return average_amplitude
-
-
 
 def cancel_all_orders(instId):
     open_orders = trade_api.get_order_list(instId=instId, state='live')
@@ -99,77 +113,100 @@ def cancel_all_orders(instId):
         trade_api.cancel_order(instId=instId, ordId=ord_id)
     logger.info(f"{instId}挂单取消成功.")
 
+def set_leverage(instId, leverage, mgnMode='isolated', posSide=None):
+    try:
+        body = {
+            "instId": instId,
+            "lever": str(leverage),
+            "mgnMode": mgnMode
+        }
+        if mgnMode == 'isolated' and posSide:
+            body["posSide"] = posSide
+        response = account_api.set_leverage(**body)
+        if response['code'] == '0':
+            logger.info(f"Leverage set to {leverage}x for {instId} with mgnMode: {mgnMode}")
+        else:
+            logger.error(f"Failed to set leverage: {response['msg']}")
+    except Exception as e:
+        logger.error(f"Error setting leverage: {e}")
 
-def place_order(instId, price, amount_usdt):
-    response = public_api.convert_contract_coin(type='1', instId=instId, sz=str(amount_usdt), px=str(price),
-                                                unit='usdt', opType='open')
+def place_order(instId, price, amount_usdt, side):
+    if instId not in instrument_info_dict:
+        logger.error(f"Instrument {instId} not found in instrument info dictionary")
+        return
+    tick_size = float(instrument_info_dict[instId]['tickSz'])
+    adjusted_price = round_price_to_tick(price, tick_size)
+
+    response = public_api.convert_contract_coin(type='1', instId=instId, sz=str(amount_usdt), px=str(price), unit='usdt', opType='open')
     if response['code'] == '0':
         sz = response['data'][0]['sz']
         if float(sz) > 0:
+            pos_side = 'long' if side == 'buy' else 'short'
+            set_leverage(instId, 10, mgnMode='isolated', posSide=pos_side)
             order_result = trade_api.place_order(
                 instId=instId,
                 tdMode='isolated',
-                side='buy',
+                posSide=pos_side,
+                side=side,
                 ordType='limit',
                 sz=sz,
-                px=str(price)
+                px=str(adjusted_price)
             )
-            print(f"{instId}下单结果: {order_result}")
-
-            # send_feishu_notification(f"{instId}下单结果: {order_result}")
+            logger.info(f"Order placed: {order_result}")
         else:
             logger.info(f"{instId}计算出的合约张数太小，无法下单。")
-            # send_feishu_notification(f"{instId}计算出的合约张数太小，无法下单。")
     else:
         logger.info(f"{instId}转换失败: {response['msg']}")
         send_feishu_notification(f"{instId}转换失败: {response['msg']}")
 
+def process_pair(instId, pair_config):
+    try:
+        mark_price = get_mark_price(instId)
+        klines = get_historical_klines(instId)
+        atr = calculate_atr(klines)
+        price_atr_ratio = (mark_price / atr) / 100
+        logger.info(f"{instId} ATR: {atr}, 当前价格/ATR比值: {price_atr_ratio:.3f}")
+
+        average_amplitude = calculate_average_amplitude(klines)
+        logger.info(f"{instId} ATR: {atr}, 平均振幅: {average_amplitude:.2f}%")
+
+        value_multiplier = pair_config.get('value_multiplier', 2)
+        selected_value = min(average_amplitude, price_atr_ratio) * value_multiplier
+        selected_value = max(selected_value, 0.8)
+
+        long_price_factor = 1 - selected_value / 100
+        short_price_factor = 1 + selected_value / 100
+
+        long_amount_usdt = pair_config.get('long_amount_usdt', 20)
+        short_amount_usdt = pair_config.get('short_amount_usdt', 20)
+
+        target_price_long = mark_price * long_price_factor
+        target_price_short = mark_price * short_price_factor
+
+        logger.info(f"{instId} Long target price: {target_price_long:.6f}, Short target price: {target_price_short:.6f}")
+
+        cancel_all_orders(instId)
+        place_order(instId, target_price_long, long_amount_usdt, 'buy')
+        place_order(instId, target_price_short, short_amount_usdt, 'sell')
+    except Exception as e:
+        error_message = f'Error processing {instId}: {e}'
+        logger.error(error_message)
+        send_feishu_notification(error_message)
 
 def main():
+    fetch_and_store_all_instruments()
+    inst_ids = list(trading_pairs_config.keys())  # 获取所有币对的ID
+    batch_size = 5  # 每批处理的数量
+
     while True:
-        try:
-            for instId, pair_config in trading_pairs_config.items():
-                mark_price = get_mark_price(instId)
-                klines = get_historical_klines(instId)
-                atr = calculate_atr(klines)
-                # print(klines)
+        for i in range(0, len(inst_ids), batch_size):
+            batch = inst_ids[i:i + batch_size]
+            with ThreadPoolExecutor(max_workers=batch_size) as executor:
+                futures = [executor.submit(process_pair, instId, trading_pairs_config[instId]) for instId in batch]
+                for future in as_completed(futures):
+                    future.result()  # Raise any exceptions caught during execution
 
-                # 打印ATR和当前价格/ATR比值
-                price_atr_ratio = (mark_price / atr) / 100
-                # print(atr)
-                # print(price_atr_ratio)
-                # continue
-                logger.info(f"{instId} ATR: {atr}, 当前价格/ATR比值: {price_atr_ratio:.3f}")
-
-                average_amplitude = calculate_average_amplitude(klines)
-
-                logger.info(f"{instId} ATR: {atr}, 平均振幅: {average_amplitude:.2f}%")
-
-                # 选择较小的值，并确保最终值不小于0.005
-                selected_value = min(average_amplitude, price_atr_ratio)
-
-                selected_value = max(selected_value, 0.5)
-
-                # price_factor = pair_config.get('price_factor', 0.99)  # 默认值0.99
-                # price_factor = 1 - price_atr_ratio  # 接针价差
-                price_factor = 1 - selected_value / 100  # 确保price_factor不为负
-
-
-                amount_usdt = pair_config.get('amount_usdt', 20)  # 默认值20
-                target_price = mark_price * price_factor
-                logger.info(f"{instId} ATR: {atr}, 当前挂单价差: {price_factor:.3f}，价格: {target_price:.6f}")
-
-
-
-                cancel_all_orders(instId)
-                place_order(instId, target_price, amount_usdt)
-
-            time.sleep(monitor_interval)
-        except Exception as e:
-            error_message = f'An error occurred: {e}'
-            logger.error(error_message)
-            send_feishu_notification(error_message)
-            time.sleep(monitor_interval)
+        time.sleep(monitor_interval)
 
 if __name__ == '__main__':
     main()

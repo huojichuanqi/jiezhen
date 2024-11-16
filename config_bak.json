@@ -14,15 +14,27 @@
     "tradingPairs": {
         "CTC-USDT-SWAP": {
             "price_factor": 0.99,
-            "amount_usdt": 20
-        },
-        "SWEAT-USDT-SWAP": {
-            "price_factor": 0.99,
-            "amount_usdt": 25
+            "long_amount_usdt": 10,
+            "short_amount_usdt": 10,
+            "value_multiplier": 3
         },
         "PNUT-USDT-SWAP": {
             "price_factor": 0.99,
-            "amount_usdt": 30
+            "long_amount_usdt": 20,
+            "short_amount_usdt": 20,
+            "value_multiplier": 3
+        },
+        "ACT-USDT-SWAP": {
+            "price_factor": 0.99,
+            "long_amount_usdt": 10,
+            "short_amount_usdt": 10,
+            "value_multiplier": 3
+        },
+        "X-USDT-SWAP": {
+            "price_factor": 0.99,
+            "long_amount_usdt": 10,
+            "short_amount_usdt": 10,
+            "value_multiplier": 3
         }
     }
 }

@@ -8,7 +8,7 @@ class PublicAPI(Client):
         Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, flag)
 
     # Get Instruments
-    def get_instruments(self, instType = 'FUTURES', uly = 'BTC-USDT', instFamily = '', instId = ''):
+    def get_instruments(self, instType = 'FUTURES', uly = '', instFamily = '', instId = ''):
         params = {'instType': instType, 'uly': uly, 'instId': instId, 'instFamily':instFamily}
         return self._request_with_params(GET, INSTRUMENT_INFO, params)
 
