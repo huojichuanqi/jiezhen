@@ -9,29 +9,26 @@
     },
     "bitget": {
     },
-    "feishu_webhook": "",
     "monitor_interval": 60,
+    "ema": 240,
+    "leverage": 10,
     "tradingPairs": {
         "CTC-USDT-SWAP": {
-            "price_factor": 0.99,
             "long_amount_usdt": 10,
             "short_amount_usdt": 10,
             "value_multiplier": 3
         },
         "PNUT-USDT-SWAP": {
-            "price_factor": 0.99,
             "long_amount_usdt": 20,
             "short_amount_usdt": 20,
             "value_multiplier": 3
         },
         "ACT-USDT-SWAP": {
-            "price_factor": 0.99,
             "long_amount_usdt": 10,
             "short_amount_usdt": 10,
             "value_multiplier": 3
         },
         "X-USDT-SWAP": {
-            "price_factor": 0.99,
             "long_amount_usdt": 10,
             "short_amount_usdt": 10,
             "value_multiplier": 3

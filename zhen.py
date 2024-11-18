@@ -8,6 +8,7 @@ import okx.Trade_api as TradeAPI
 import okx.Public_api as PublicAPI
 import okx.Market_api as MarketAPI
 import okx.Account_api as AccountAPI
+import pandas as pd
 
 # 读取配置文件
 with open('config.json', 'r') as f:
@@ -18,6 +19,8 @@ okx_config = config['okx']
 trading_pairs_config = config.get('tradingPairs', {})
 monitor_interval = config.get('monitor_interval', 60)  # 默认60秒
 feishu_webhook = config.get('feishu_webhook', '')
+ema_value = config.get('ema', 240)
+leverage_value = config.get('leverage', 10)
 
 trade_api = TradeAPI.TradeAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
 market_api = MarketAPI.MarketAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
@@ -77,7 +80,7 @@ def get_mark_price(instId):
 def round_price_to_tick(price, tick_size):
     return round(price / tick_size) * tick_size
 
-def get_historical_klines(instId, bar='1m', limit=100):
+def get_historical_klines(instId, bar='1m', limit=241):
     response = market_api.get_candlesticks(instId, bar=bar, limit=limit)
     if 'data' in response and len(response['data']) > 0:
         return response['data']
@@ -94,6 +97,18 @@ def calculate_atr(klines, period=60):
         trs.append(tr)
     atr = sum(trs[-period:]) / period
     return atr
+
+def calculate_ema_pandas(data, period):
+    """
+    使用 pandas 计算 EMA
+    :param 收盘价列表
+    :param period: EMA 周期
+    :return: EMA 值
+    """
+    df = pd.Series(data)
+    ema = df.ewm(span=period, adjust=False).mean()
+    return ema.iloc[-1]  # 返回最后一个 EMA 值
+
 
 def calculate_average_amplitude(klines, period=60):
     amplitudes = []
@@ -142,7 +157,7 @@ def place_order(instId, price, amount_usdt, side):
         sz = response['data'][0]['sz']
         if float(sz) > 0:
             pos_side = 'long' if side == 'buy' else 'short'
-            set_leverage(instId, 10, mgnMode='isolated', posSide=pos_side)
+            set_leverage(instId, leverage_value, mgnMode='isolated', posSide=pos_side)
             order_result = trade_api.place_order(
                 instId=instId,
                 tdMode='isolated',
@@ -163,6 +178,19 @@ def process_pair(instId, pair_config):
     try:
         mark_price = get_mark_price(instId)
         klines = get_historical_klines(instId)
+
+        # 提取收盘价数据用于计算 EMA
+        close_prices = [float(kline[4]) for kline in klines[::-1]]  # K线中的收盘价，顺序要新的在最后
+
+        # 计算 EMA60
+        ema60 = calculate_ema_pandas(close_prices, period=ema_value)
+        logger.info(f"{instId} EMA60: {ema60:.6f}, 当前价格: {mark_price:.6f}")
+
+        # 判断趋势：多头趋势或空头趋势
+        is_bullish_trend = close_prices[-1] > ema60  # 收盘价在 EMA60 之上
+        is_bearish_trend = close_prices[-1] < ema60  # 收盘价在 EMA60 之下
+
+        # 计算 ATR
         atr = calculate_atr(klines)
         price_atr_ratio = (mark_price / atr) / 100
         logger.info(f"{instId} ATR: {atr}, 当前价格/ATR比值: {price_atr_ratio:.3f}")
@@ -186,8 +214,20 @@ def process_pair(instId, pair_config):
         logger.info(f"{instId} Long target price: {target_price_long:.6f}, Short target price: {target_price_short:.6f}")
 
         cancel_all_orders(instId)
-        place_order(instId, target_price_long, long_amount_usdt, 'buy')
-        place_order(instId, target_price_short, short_amount_usdt, 'sell')
+
+        # 判断趋势后决定是否挂单
+        if is_bullish_trend:
+            logger.info(f"{instId} 当前为多头趋势，允许挂多单")
+            place_order(instId, target_price_long, long_amount_usdt, 'buy')
+        else:
+            logger.info(f"{instId} 当前非多头趋势，跳过多单挂单")
+
+        if is_bearish_trend:
+            logger.info(f"{instId} 当前为空头趋势，允许挂空单")
+            place_order(instId, target_price_short, short_amount_usdt, 'sell')
+        else:
+            logger.info(f"{instId} 当前非空头趋势，跳过空单挂单")
+
     except Exception as e:
         error_message = f'Error processing {instId}: {e}'
         logger.error(error_message)
