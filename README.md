@@ -1,6 +1,11 @@
 # jiezhen
 读秒循环接针高频
 
+策略原理：上次在火币看到一些很长的针，就想着如何把针接住，本质很简单，用ema判断短期趋势，尽可能下面挂单接住插下来的针
+
+如果跑15m周期以上，建议用1h的ema判断多空，或者人工介入判断
+
+
 config_bak.json  改成config.json
 
 #### 视频说明地址：https://www.youtube.com/watch?v=b-LhdQomOxk
