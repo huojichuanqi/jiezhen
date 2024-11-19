@@ -19,7 +19,6 @@ okx_config = config['okx']
 trading_pairs_config = config.get('tradingPairs', {})
 monitor_interval = config.get('monitor_interval', 60)  # 默认60秒
 feishu_webhook = config.get('feishu_webhook', '')
-ema_value = config.get('ema', 240)
 leverage_value = config.get('leverage', 10)
 
 trade_api = TradeAPI.TradeAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
@@ -183,6 +182,7 @@ def process_pair(instId, pair_config):
         close_prices = [float(kline[4]) for kline in klines[::-1]]  # K线中的收盘价，顺序要新的在最后
 
         # 计算 EMA60
+        ema_value = pair_config.get('ema', 240)
         ema60 = calculate_ema_pandas(close_prices, period=ema_value)
         logger.info(f"{instId} EMA60: {ema60:.6f}, 当前价格: {mark_price:.6f}")
 

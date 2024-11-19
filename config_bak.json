@@ -11,28 +11,31 @@
     },
     "feishu_webhook": "https://open.feishu.cn/open-apis/bot/v2/hook/655821a2",
     "monitor_interval": 60,
-    "ema": 240,
     "leverage": 10,
     "tradingPairs": {
         "CTC-USDT-SWAP": {
             "long_amount_usdt": 10,
             "short_amount_usdt": 10,
-            "value_multiplier": 3
+            "value_multiplier": 3,
+            "ema": 240
         },
         "PNUT-USDT-SWAP": {
             "long_amount_usdt": 20,
             "short_amount_usdt": 20,
-            "value_multiplier": 3
+            "value_multiplier": 3,
+            "ema": 240
         },
         "ACT-USDT-SWAP": {
             "long_amount_usdt": 10,
             "short_amount_usdt": 10,
-            "value_multiplier": 3
+            "value_multiplier": 3,
+            "ema": 240
         },
         "X-USDT-SWAP": {
             "long_amount_usdt": 10,
             "short_amount_usdt": 10,
-            "value_multiplier": 3
+            "value_multiplier": 3,
+            "ema": 240
         }
     }
 }
