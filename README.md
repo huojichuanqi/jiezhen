@@ -27,3 +27,5 @@ config_bak.json  改成config.json
 #### long_amount_usdt: 做多交易时每笔订单分配的资金量（以 USDT 为单位）。
 #### short_amount_usdt: 做空交易时每笔订单分配的资金量（以 USDT 为单位）。
 #### value_multiplier: 用于放大交易价值的乘数，适合调整风险/回报比。
+
+打赏地址trc20: TUunBuqQ1ZDYt9WrA3ZarndFPQgefXqZAM
