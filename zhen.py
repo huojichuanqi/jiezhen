@@ -181,10 +181,10 @@ def process_pair(instId, pair_config):
         # 提取收盘价数据用于计算 EMA
         close_prices = [float(kline[4]) for kline in klines[::-1]]  # K线中的收盘价，顺序要新的在最后
 
-        # 计算 EMA60
+        # 计算 EMA
         ema_value = pair_config.get('ema', 240)
         ema60 = calculate_ema_pandas(close_prices, period=ema_value)
-        logger.info(f"{instId} EMA60: {ema60:.6f}, 当前价格: {mark_price:.6f}")
+        logger.info(f"{instId} EMA{ema_value}: {ema60:.6f}, 当前价格: {mark_price:.6f}")
 
         # 判断趋势：多头趋势或空头趋势
         is_bullish_trend = close_prices[-1] > ema60  # 收盘价在 EMA60 之上
