@@ -77,7 +77,12 @@ def get_mark_price(instId):
         raise ValueError("Unexpected response structure or missing 'last' key")
 
 def round_price_to_tick(price, tick_size):
-    return round(price / tick_size) * tick_size
+    # 计算 tick_size 的小数位数
+    tick_decimals = len(f"{tick_size:.10f}".rstrip('0').split('.')[1]) if '.' in f"{tick_size:.10f}" else 0
+
+    # 调整价格为 tick_size 的整数倍
+    adjusted_price = round(price / tick_size) * tick_size
+    return f"{adjusted_price:.{tick_decimals}f}"
 
 def get_historical_klines(instId, bar='1m', limit=241):
     response = market_api.get_candlesticks(instId, bar=bar, limit=limit)
@@ -151,10 +156,11 @@ def place_order(instId, price, amount_usdt, side):
     tick_size = float(instrument_info_dict[instId]['tickSz'])
     adjusted_price = round_price_to_tick(price, tick_size)
 
-    response = public_api.convert_contract_coin(type='1', instId=instId, sz=str(amount_usdt), px=str(price), unit='usdt', opType='open')
+    response = public_api.convert_contract_coin(type='1', instId=instId, sz=str(amount_usdt), px=str(adjusted_price), unit='usdt', opType='open')
     if response['code'] == '0':
         sz = response['data'][0]['sz']
         if float(sz) > 0:
+
             pos_side = 'long' if side == 'buy' else 'short'
             set_leverage(instId, leverage_value, mgnMode='isolated', posSide=pos_side)
             order_result = trade_api.place_order(
