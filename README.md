@@ -13,6 +13,8 @@
 
 config_bak.json  改成config.json
 
+zhen.py 跟 zhen_2.py的区别是：https://x.com/huojichuanqi/status/1858991226877603902
+
 #### 视频说明地址：https://www.youtube.com/watch?v=b-LhdQomOxk
  
 #### apiKey: OKX API 的公钥，用于身份验证。
