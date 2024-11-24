@@ -189,12 +189,16 @@ def process_pair(instId, pair_config):
 
         # 计算 EMA
         ema_value = pair_config.get('ema', 240)
-        ema60 = calculate_ema_pandas(close_prices, period=ema_value)
-        logger.info(f"{instId} EMA{ema_value}: {ema60:.6f}, 当前价格: {mark_price:.6f}")
-
-        # 判断趋势：多头趋势或空头趋势
-        is_bullish_trend = close_prices[-1] > ema60  # 收盘价在 EMA60 之上
-        is_bearish_trend = close_prices[-1] < ema60  # 收盘价在 EMA60 之下
+        # 如果ema值为0 不区分方向，两头都挂单
+        if ema_value == 0:
+            is_bullish_trend = True
+            is_bearish_trend = True
+        else:
+            ema60 = calculate_ema_pandas(close_prices, period=ema_value)
+            logger.info(f"{instId} EMA60: {ema60:.6f}, 当前价格: {mark_price:.6f}")
+            # 判断趋势：多头趋势或空头趋势
+            is_bullish_trend = close_prices[-1] > ema60  # 收盘价在 EMA60 之上
+            is_bearish_trend = close_prices[-1] < ema60  # 收盘价在 EMA60 之下
 
         # 计算 ATR
         atr = calculate_atr(klines)
