@@ -4,8 +4,8 @@ from .consts import *
 
 class AccountAPI(Client):
 
-    def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, flag='1'):
-        Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, flag)
+    def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, flag='1', proxies=None):
+        Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, flag, proxies=proxies)
 
     # Get Positions
     def get_position_risk(self, instType=''):
@@ -219,7 +219,7 @@ class AccountAPI(Client):
         return self._request_with_params(POST, SET_ACCOUNT_LEVEL, params)
 
 
-    def position_builder(self,inclRealPosAndEq='',spotOffsetType='',simPos='',simAsset='',
+    def position_builder(self, acctLv, inclRealPosAndEq='',spotOffsetType='',simPos='',simAsset='',
                          greeksType='',):
         params = {'acctLv': acctLv, 'spotOffsetType': spotOffsetType, 'simPos': simPos, 'simAsset': simAsset,
                   'greeksType': greeksType, }
