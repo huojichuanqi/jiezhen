@@ -104,7 +104,7 @@ class CopytradingAPI(Client):
         return self._request_with_params(GET, LEAD_TRADERS_HISTORY, params)
 
     # GET /api/v5/copytrading/public-lead-traders
-    def public_lead_traders(instType='',sortType='',state='',minLeadDays='',minAssets='',maxAssets='',
+    def public_lead_traders(self, instType='',sortType='',state='',minLeadDays='',minAssets='',maxAssets='',
                                              minAum='',maxAum='',dataVer='',page='',limit=''):
         params = {'instType': sortType, 'sortType': sortType, 'state': state, 'minLeadDays': minLeadDays,
                   'minAssets': minAssets, 'maxAssets': maxAssets, 'minAum': minAum, 'maxAum': maxAum,
