@@ -20,11 +20,13 @@ trading_pairs_config = config.get('tradingPairs', {})
 monitor_interval = config.get('monitor_interval', 60)  # 默认60秒
 feishu_webhook = config.get('feishu_webhook', '')
 leverage_value = config.get('leverage', 10)
+proxies = config['proxies']
 
-trade_api = TradeAPI.TradeAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
-market_api = MarketAPI.MarketAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
-public_api = PublicAPI.PublicAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
-account_api = AccountAPI.AccountAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0')
+# 初始化OKX API
+trade_api = TradeAPI.TradeAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0', proxies)
+market_api = MarketAPI.MarketAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0', proxies)
+public_api = PublicAPI.PublicAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0', proxies)
+account_api = AccountAPI.AccountAPI(okx_config["apiKey"], okx_config["secret"], okx_config["password"], False, '0', proxies)
 
 log_file = "log/okx2.log"
 logger = logging.getLogger(__name__)
